@@ -251,18 +251,17 @@ function New-WorkItem
 
     $newWorkitemUrl = "$($ProjectConfig.AzDOsUrl)$($ProjectConfig.Project)/_apis/wit/workitems/{0}?api-version=5.1" #$($ProjectConfig.ApiVersion)"
     $newWorkitemUrl = [string]::Format($newWorkitemUrl, [string]::Concat("$", $WorkItemType))
-    
 
-    $workItemDefinition = "[
-        {{ ""op"": ""add"",""path"": ""/fields/System.Title"",""from"": null,""value"": ""{0}"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.AreaPath"",""from"": null,""value"": ""{1}"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.State"",""from"": null,""value"": ""{2}"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.IterationPath"",""from"": null,""value"": ""{3}"" }}
-    ]"
     $iterationPath = "$($ProjectConfig.Project)\\$($IterationConfig.ParentIterationName)\\$($IterationConfig.IterationName)"
     $areaPath = $IterationConfig.AreaPath -replace "/", "\\"
-    $workItemDefinition = $workItemDefinition -f $Name, $areaPath, $State, $iterationPath
-    
+
+    $workItemDefinition = "[
+        { ""op"": ""add"",""path"": ""/fields/System.Title"",""from"": null,""value"": ""$Name"" },
+        { ""op"": ""add"",""path"": ""/fields/System.AreaPath"",""from"": null,""value"": ""$areaPath"" },
+        { ""op"": ""add"",""path"": ""/fields/System.State"",""from"": null,""value"": ""$State"" },
+        { ""op"": ""add"",""path"": ""/fields/System.IterationPath"",""from"": null,""value"": ""$iterationPath"" }
+    ]"
+        
     try {
         Invoke-RestMethod -Uri $newWorkitemUrl -Method Post -ContentType "application/json-patch+json" -Headers $($ProjectConfig.Header) -Body $workItemDefinition
         return $true
@@ -286,27 +285,28 @@ function New-TaskLink
     $newWorkitemUrl = "$($ProjectConfig.AzDOsUrl)$($ProjectConfig.Project)/_apis/wit/workitems/{0}?api-version=5.1" #$($ProjectConfig.ApiVersion)"
     $newWorkitemUrl = [string]::Format($newWorkitemUrl, [string]::Concat("$", "Task"))
 
-    $workItemDefinition = "[
-        {{ ""op"": ""add"",""path"": ""/id"",""from"": null,""value"": ""-1"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.Title"",""from"": null,""value"": ""{0}"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.AreaPath"",""from"": null,""value"": ""{1}"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.State"",""from"": null,""value"": ""{2}"" }},
-        {{ ""op"": ""add"",""path"": ""/fields/System.IterationPath"",""from"": null,""value"": ""{3}"" }},
-        {{
-            ""op"": ""add"",
-            ""path"": ""/relations/-"",
-            ""value"": {{
-              ""rel"": ""System.LinkTypes.Hierarchy-Reverse"",
-              ""url"": ""{4}/_apis/wit/workItems/{5}"",
-              ""attributes"": {{
-                ""comment"": ""Making a new link for the dependency""
-              }}
-            }}
-        }}
-    ]"
     $iterationPath = "$($ProjectConfig.Project)\\$($IterationConfig.ParentIterationName)\\$($IterationConfig.IterationName)"
     $areaPath = $IterationConfig.AreaPath -replace "/", "\\"
-    $workItemDefinition = $workItemDefinition -f $Name, $areaPath, "To Do", $iterationPath, "$($ProjectConfig.AzDOsUrl)$($ProjectConfig.Project)", $ParentWorkItemId
+    $baseUrl = "$($ProjectConfig.AzDOsUrl)$($ProjectConfig.Project)"
+
+    $workItemDefinition = "[
+        { ""op"": ""add"",""path"": ""/id"",""from"": null,""value"": ""-1"" },
+        { ""op"": ""add"",""path"": ""/fields/System.Title"",""from"": null,""value"": ""$Name"" },
+        { ""op"": ""add"",""path"": ""/fields/System.AreaPath"",""from"": null,""value"": ""$areaPath"" },
+        { ""op"": ""add"",""path"": ""/fields/System.State"",""from"": null,""value"": ""To Do"" },
+        { ""op"": ""add"",""path"": ""/fields/System.IterationPath"",""from"": null,""value"": ""$iterationPath"" },
+        {
+            ""op"": ""add"",
+            ""path"": ""/relations/-"",
+            ""value"": {
+              ""rel"": ""System.LinkTypes.Hierarchy-Reverse"",
+              ""url"": ""$baseUrl/_apis/wit/workItems/$ParentWorkItemId"",
+              ""attributes"": {
+                ""comment"": ""Making a new link for the dependency""
+              }
+            }
+        }
+    ]"
     
     try {
         
